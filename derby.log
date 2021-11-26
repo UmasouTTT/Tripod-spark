@@ -1,0 +1,13 @@
+----------------------------------------------------------------
+Wed Nov 17 09:59:29 CST 2021:
+Booting Derby version The Apache Software Foundation - Apache Derby - 10.12.1.1 - (1704137): instance a816c00e-017d-2b9e-d4f3-000008fa1ac0 
+on database directory /Users/umasou/workSpace/JavaProjects/spark-2.4.5/metastore_db with class loader sun.misc.Launcher$AppClassLoader@2d38eb89 
+Loaded from file:/Users/umasou/workSpace/JavaProjects/spark-2.4.5/assembly/target/scala-2.11/jars/derby-10.12.1.1.jar
+java.vendor=Oracle Corporation
+java.runtime.version=1.8.0_291-b10
+user.dir=/Users/umasou/workSpace/JavaProjects/spark-2.4.5
+os.name=Mac OS X
+os.arch=x86_64
+os.version=10.14.6
+derby.system.home=null
+Database Class Loader started - derby.database.classpath=''

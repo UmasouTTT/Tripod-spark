@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="maven-antrun-" default="main"  >
+<target name="main">
+  <delete file="/Users/umasou/workSpace/JavaProjects/spark-2.4.5/assembly/../python/lib/pyspark.zip"/>
+  <zip destfile="/Users/umasou/workSpace/JavaProjects/spark-2.4.5/assembly/../python/lib/pyspark.zip">
+    <fileset includes="pyspark/**/*" dir="/Users/umasou/workSpace/JavaProjects/spark-2.4.5/assembly/../python/"/>
+  </zip>
+</target>
+</project>
