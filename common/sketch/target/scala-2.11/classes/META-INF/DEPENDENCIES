@@ -6,6 +6,10 @@
 Spark Project Sketch
 
 
+From: 'Alibaba Group' (https://github.com/alibaba)
+  - fastjson (https://github.com/alibaba/fastjson) com.alibaba:fastjson:jar:1.2.32
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
 From: 'an unknown organization'
   - empty (http://nexus.sonatype.org/oss-repository-hosting.html/unused) org.spark-project.spark:unused:jar:1.0.0
     License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)

@@ -226,6 +226,7 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.scala-lang:scala-library:2.11.12" level="project" />
     <orderEntry type="library" name="Maven: com.github.scopt:scopt_2.11:3.7.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.twitter:parquet-hadoop-bundle:1.6.0" level="project" />
+    <orderEntry type="library" name="Maven: com.alibaba:fastjson:1.2.32" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.scalatest:scalatest_2.11:3.0.3" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: org.scalactic:scalactic_2.11:3.0.3" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.scala-lang:scala-reflect:2.11.12" level="project" />

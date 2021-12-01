@@ -6,6 +6,10 @@
 Kafka 0.10+ Source for Structured Streaming
 
 
+From: 'Alibaba Group' (https://github.com/alibaba)
+  - fastjson (https://github.com/alibaba/fastjson) com.alibaba:fastjson:jar:1.2.32
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
 From: 'an unknown organization'
   - Apache Kafka (http://kafka.apache.org) org.apache.kafka:kafka-clients:jar:2.0.0
     License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)

@@ -6,6 +6,10 @@
 Spark Project Unsafe
 
 
+From: 'Alibaba Group' (https://github.com/alibaba)
+  - fastjson (https://github.com/alibaba/fastjson) com.alibaba:fastjson:jar:1.2.32
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
 From: 'an unknown organization'
   - Kryo Shaded (https://github.com/EsotericSoftware/kryo/kryo-shaded) com.esotericsoftware:kryo-shaded:bundle:4.0.2
     License: 3-Clause BSD License  (https://opensource.org/licenses/BSD-3-Clause)

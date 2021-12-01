@@ -210,6 +210,14 @@ class HadoopRDD[K, V](
         allInputSplits
       }
       val array = new Array[Partition](inputSplits.size)
+
+      // Tripod add file range
+      val start = inputSplits(0).toString.split(':').last.split('+')(0).toInt
+      val end = inputSplits.last.toString.split(':').
+        last.split('+')(0).toInt + inputSplits.last.toString.split(':').last.split('+')(1).toInt
+      logWarning("Add new input range : " + start + "-" + end)
+      val file_range = start + "-" + end
+      sc.rdd_file_range.put(id.toString, file_range)
       for (i <- 0 until inputSplits.size) {
         // Tripod
         logInfo(s"Tripod Input split ${i} : " + inputSplits(i))

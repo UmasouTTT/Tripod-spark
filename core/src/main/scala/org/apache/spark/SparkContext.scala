@@ -17,6 +17,8 @@
 
 package org.apache.spark
 
+import com.alibaba.fastjson.serializer.SerializerFeature
+
 import java.io._
 import java.net.URI
 import java.util.{Arrays, Locale, Properties, ServiceLoader, UUID}
@@ -56,6 +58,12 @@ import org.apache.spark.storage._
 import org.apache.spark.storage.BlockManagerMessages.TriggerThreadDump
 import org.apache.spark.ui.{ConsoleProgressBar, SparkUI}
 import org.apache.spark.util._
+import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.entity.StringEntity
+import org.apache.http.impl.client.HttpClients
+import com.alibaba.fastjson.{JSON, JSONObject}
+import org.apache.http.HttpEntity
+import org.apache.http.util.EntityUtils
 
 import scala.io.Source
 
@@ -86,6 +94,12 @@ class SparkContext(config: SparkConf) extends Logging {
   val startTime = System.currentTimeMillis()
 
   // Tripod
+  var application_id = "0"
+
+  var rdd_file_range = new JSONObject
+
+  val httpClient = HttpClients.createDefault()
+
   var rddToStageId = getRDDToStageId()
 
   var stagePriority = getStagePriority()
@@ -95,7 +109,7 @@ class SparkContext(config: SparkConf) extends Logging {
   var stagesCachedCondition = getStagesCachedCondition()
 
   // For cache prefetch
-  val prefetchUUID = UUID.randomUUID()
+//  val prefetchUUID = UUID.randomUUID()
 
   var stagesHasInput = getStagesHasInput()
 
@@ -2225,8 +2239,47 @@ class SparkContext(config: SparkConf) extends Logging {
       logInfo("RDD's recursive dependencies:\n" + rdd.toDebugString)
     }
 
-    // Tripod
+    // Tripod Collect server need information
+    var num_of_executors = maxNumConcurrentTasks()
+
+    // Tripod Server
     logInfo("RDD's recursive dependencies:\n" + rdd.toDebugString)
+
+    // Connect Tripod Server
+    logWarning("Start asking Tripod for schedule plan ...")
+    try{
+
+      val url = "http://0.0.0.0:3288/newJob"
+      val post = new HttpPost(url)
+
+      // 设置header
+      val header = """{"Content-Type": "application/json"}"""
+      if (header != null){
+        val json = JSON.parseObject(header)
+        json.keySet().toArray.map(_.toString).foreach(key => post.setHeader(key, json.getString(key)))
+      }
+      val jsonObj = new JSONObject
+      jsonObj.put("id", String.valueOf(application_id))
+      jsonObj.put("num_of_executors", num_of_executors)
+      jsonObj.put("graph", rdd.toDebugString)
+      logWarning("rdd_input_range is " + String.valueOf(rdd_file_range))
+      jsonObj.put("rdd_input_range", rdd_file_range)
+      if(jsonObj != null){
+        post.setEntity(new StringEntity(jsonObj.toJSONString, "UTF-8"))
+      }
+      val response = httpClient.execute(post)
+      val entity: HttpEntity = response.getEntity
+      val str = EntityUtils.toString(entity, "UTF-8")
+      logWarning("Response is :" + response.toString)
+      logWarning("Response is :" + str)
+      logWarning("Send finish job inf success !")
+    }
+    catch {
+      case e: Exception =>
+        logWarning("Http server failed!")
+    }finally {
+      httpClient.close()
+    }
 
     dagScheduler.runJob(rdd, cleanedFunc, partitions, callSite, resultHandler, localProperties.get)
     progressBar.foreach(_.finishAll())
