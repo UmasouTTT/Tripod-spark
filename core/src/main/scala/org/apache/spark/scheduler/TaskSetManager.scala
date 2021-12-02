@@ -55,7 +55,7 @@ private[spark] class TaskSetManager(
     clock: Clock = new SystemClock()) extends Schedulable with Logging {
 
   // Tripod
-  val tripodId = taskSet.tripodId
+  var tripodId = taskSet.tripodId
 
   private val conf = sched.sc.conf
 

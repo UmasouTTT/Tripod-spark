@@ -43,6 +43,15 @@ import org.apache.spark.storage._
 import org.apache.spark.storage.BlockManagerMessages.BlockManagerHeartbeat
 import org.apache.spark.util._
 
+import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.entity.StringEntity
+import org.apache.http.impl.client.HttpClients
+import com.alibaba.fastjson.{JSON, JSONObject}
+import org.apache.http.HttpEntity
+import org.apache.http.util.EntityUtils
+
+import scala.io.Source
+
 /**
  * The high-level scheduling layer that implements stage-oriented scheduling. It computes a DAG of
  * stages for each job, keeps track of which RDDs and stage outputs are materialized, and finds a
@@ -386,18 +395,20 @@ private[spark] class DAGScheduler(
     var id = nextStageId.getAndIncrement()
 
     // Tripod
-    if (sc.rddToStageId.contains(rdd.id)) {
-      id = sc.rddToStageId(rdd.id)
-    }
+//    if (sc.rddToStageId.contains(rdd.id)) {
+//      id = sc.rddToStageId(rdd.id)
+//    }
     var stage = new ShuffleMapStage(
       id, rdd, numTasks, parents, jobId, rdd.creationSite, shuffleDep, mapOutputTracker)
 
 
     // Tripod
     logWarning(s"Tripod: stage [$id] 's RDD id is [${rdd.id}]")
-    if (sc.stagePriority.contains(id)) {
-      stage.tripodPriority = sc.stagePriority(id)
+    if (sc.rdd_generate_priority.contains(rdd.id.toString)) {
+      stage.tripodPriority = sc.rdd_generate_priority(rdd.id.toString)
     }
+
+    sc.stage_2_rdd += (stage.id -> stage.rdd.id)
 
 
     stageIdToStage(id) = stage
@@ -1076,7 +1087,7 @@ private[spark] class DAGScheduler(
       if (!waitingStages(stage) && !runningStages(stage) && !failedStages(stage)) {
 
         var missing: List[Stage] = List()
-        if (sc.stagePriority.nonEmpty) {
+        if (sc.rdd_generate_priority.nonEmpty) {
           logWarning("Tripod: Sort stages by tripod priority ...")
           missing = getMissingParentStages(stage).sortBy(_.tripodPriority)
         }
@@ -1093,8 +1104,8 @@ private[spark] class DAGScheduler(
         } else {
           // Tripod
           logWarning("Tripod: show missing parents' id ...")
-          var stage_parents: String = "Tripod:"
-          var stage_priority: String = "Tripod:"
+          var stage_parents: String = ""
+          var stage_priority: String = ""
           for (parent <- missing) {
 
             stage_parents += parent.id
@@ -1877,6 +1888,53 @@ private[spark] class DAGScheduler(
     if (errorMessage.isEmpty) {
       logInfo("%s (%s) finished in %s s".format(stage, stage.name, serviceTime))
       stage.latestInfo.completionTime = Some(clock.getTimeMillis())
+
+      // Tripod send finish stage inf to tripod
+
+      // Tripod Server
+
+      // Connect Tripod Server
+      logWarning("Start asking Tripod for new schedule plan ...")
+      try{
+        var num_of_executors = sc.maxNumConcurrentTasks()
+        val url = "http://0.0.0.0:3288/finishStage"
+        val post = new HttpPost(url)
+
+        // 设置header
+        val header = """{"Content-Type": "application/json"}"""
+        if (header != null){
+          val json = JSON.parseObject(header)
+          json.keySet().toArray.map(_.toString).foreach(key => post.setHeader(key, json.getString(key)))
+        }
+        val jsonObj = new JSONObject
+        jsonObj.put("id", String.valueOf(sc.application_id))
+        jsonObj.put("num_of_executors", num_of_executors)
+        jsonObj.put("rdd", stage.rdd.id)
+        if(jsonObj != null){
+          post.setEntity(new StringEntity(jsonObj.toJSONString, "UTF-8"))
+        }
+        val response = sc.httpClient.execute(post)
+        val entity: HttpEntity = response.getEntity
+        val str = EntityUtils.toString(entity, "UTF-8")
+        logWarning("Tripod: Response is :" + str)
+        var new_order = sc.jsonToMap(JSON.parseObject(str).get("rddToTripodId").asInstanceOf[JSONObject])
+        if (0 == new_order.size) {
+          // old order
+          logWarning("Tripod: no need to update stage order")
+        }
+        else {
+          // update
+          sc.rdd_2_tripod_id = new_order
+          sc.is_new_order = true
+        }
+
+
+        logWarning("Send finish job inf success !")
+      }
+      catch {
+        case e: Exception =>
+          logWarning("Http server failed for reason" + e.toString)
+      }
 
       // Clear failure count for this stage, now that it's succeeded.
       // We only limit consecutive failures of stage attempts,so that if a stage is

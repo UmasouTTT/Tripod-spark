@@ -199,9 +199,10 @@ private[spark] class TaskSchedulerImpl(
   override def submitTasks(taskSet: TaskSet) {
     // Tripod
     logWarning(s"Tripod: start get taskSet ${taskSet.stageId} " +
-      s"with ${sc.stageIdToTripodId.toString()}")
-    if (sc.stageIdToTripodId.contains(taskSet.stageId)) {
-      taskSet.tripodId = sc.stageIdToTripodId(taskSet.stageId)
+      s"with ${sc.rdd_2_tripod_id.toString()}")
+    if (sc.stage_2_rdd.contains(taskSet.stageId) &&
+      sc.rdd_2_tripod_id.contains(sc.stage_2_rdd(taskSet.stageId).toString)) {
+      taskSet.tripodId = sc.rdd_2_tripod_id(sc.stage_2_rdd(taskSet.stageId).toString)
     }
     else {
       taskSet.tripodId = taskSet.stageId
@@ -409,18 +410,21 @@ private[spark] class TaskSchedulerImpl(
     val tasks = shuffledOffers.map(o => new ArrayBuffer[TaskDescription](o.cores / CPUS_PER_TASK))
     val availableCpus = shuffledOffers.map(o => o.cores).toArray
     var sortedTaskSets = rootPool.getSortedTaskSetQueue
-    // Tripod : resort
-//    logWarning("Tripod: origin stage order ...")
-//    for (taskSet <- sortedTaskSets) {
-//      logWarning("parentName: %s, name: %s, runningTasks: %s, tripodId: %d".format(
-//        taskSet.parent.name, taskSet.name, taskSet.runningTasks, taskSet.tripodId))
-//    }
-//    sortedTaskSets.sortWith(_.tripodId < _.tripodId)
-//    logWarning("Tripod: new stage order ...")
-//    for (taskSet <- sortedTaskSets) {
-//      logWarning("parentName: %s, name: %s, runningTasks: %s, tripodId: %d".format(
-//        taskSet.parent.name, taskSet.name, taskSet.runningTasks, taskSet.tripodId))
-//    }
+    // Tripod : check is new order
+    if (sc.is_new_order) {
+      logWarning("Tripod: assign new stage order " + sc.rdd_2_tripod_id)
+      for (taskSet <- sortedTaskSets) {
+        if (sc.stage_2_rdd.contains(taskSet.stageId) &&
+          sc.rdd_2_tripod_id.contains(sc.stage_2_rdd(taskSet.stageId).toString)) {
+          taskSet.tripodId = sc.rdd_2_tripod_id(sc.stage_2_rdd(taskSet.stageId).toString)
+        }
+        else {
+          taskSet.tripodId = taskSet.stageId
+        }
+      }
+      sc.is_new_order = false
+    }
+
     for (taskSet <- sortedTaskSets) {
       logWarning("parentName: %s, name: %s, runningTasks: %s, tripodId: %d, stageId: %d".format(
         taskSet.parent.name, taskSet.name, taskSet.runningTasks, taskSet.tripodId, taskSet.stageId))
@@ -432,10 +436,10 @@ private[spark] class TaskSchedulerImpl(
     // Tripod: sort by cached condition
     for (taskSet <- sortedTaskSets) {
       if (sc.stageHasInput(taskSet.stageId)) {
-        logWarning("Tripod : stages has input : " + sc.stagesHasInput.toString())
-        logWarning("Tripod : cache condition : " + sc.stagesCachedCondition.toString())
+        logWarning("Tripod: stages has input : " + sc.stagesHasInput.toString())
+        logWarning("Tripod: cache condition : " + sc.stagesCachedCondition.toString())
         logWarning("Tripod: Start assign resource for taskset " + taskSet.stageId.toString)
-        logWarning(s"Tripod : taskSet ${taskSet.stageId} has input , start sort ...")
+        logWarning(s"Tripod: taskSet ${taskSet.stageId} has input , start sort ...")
         taskSet.sortByCachedCondition(sc.stagesCachedCondition(taskSet.stageId))
       }
     }

@@ -25,7 +25,7 @@ import java.util.{Arrays, Locale, Properties, ServiceLoader, UUID}
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
 import scala.collection.JavaConverters._
-import scala.collection.Map
+import scala.collection.{Map, mutable}
 import scala.collection.generic.Growable
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.language.implicitConversions
@@ -100,18 +100,34 @@ class SparkContext(config: SparkConf) extends Logging {
 
   val httpClient = HttpClients.createDefault()
 
-  var rddToStageId = getRDDToStageId()
+//  var rddToStageId = getRDDToStageId()
+//
+//  var stagePriority = getStagePriority()
+//
+//  var stageIdToTripodId = getStageIdToTripodId()
+//
+//  var stagesCachedCondition = getStagesCachedCondition()
 
-  var stagePriority = getStagePriority()
+  var rddToStageId: Map[Int, Int] = Map()
 
-  var stageIdToTripodId = getStageIdToTripodId()
+//  var rdd_generate_priority: Map[Int, Int] = Map()
 
-  var stagesCachedCondition = getStagesCachedCondition()
+//  var stagePriority: Map[Int, Int] = Map()
+
+  var rdd_generate_priority: Map[String, Int] = Map()
+
+  var rdd_2_tripod_id: Map[String, Int] = Map()
+
+  var stage_2_rdd: Map[Int, Int] = Map()
+
+  var is_new_order: Boolean = false
+
+  var stagesCachedCondition: Map[Int, ArrayBuffer[Int]] = Map()
 
   // For cache prefetch
 //  val prefetchUUID = UUID.randomUUID()
 
-  var stagesHasInput = getStagesHasInput()
+  var stagesHasInput = new ArrayBuffer[Int]()
 
   logInfo("Tripod : stages has input : " + stagesHasInput.toString())
 
@@ -263,6 +279,20 @@ class SparkContext(config: SparkConf) extends Logging {
       return result
     }
   }
+
+  def jsonToMap(jsonObj: JSONObject): Map[String, Int] = {
+   // logWarning("get new jsonobject" + jsonObj.toString)
+    val jsonKey = jsonObj.keySet()
+    val iter = jsonKey.iterator()
+    var map: Map[String, Int] = Map()
+    while (iter.hasNext) {
+      val instance = iter.next()
+      val value = jsonObj.get(instance).toString.toInt
+      map += (instance -> value)
+    }
+    map
+  }
+
 
   // Tripod End
 
@@ -2243,7 +2273,7 @@ class SparkContext(config: SparkConf) extends Logging {
     var num_of_executors = maxNumConcurrentTasks()
 
     // Tripod Server
-    logInfo("RDD's recursive dependencies:\n" + rdd.toDebugString)
+    logInfo("Tripod RDD's recursive dependencies:\n" + rdd.toDebugString)
 
     // Connect Tripod Server
     logWarning("Start asking Tripod for schedule plan ...")
@@ -2262,7 +2292,6 @@ class SparkContext(config: SparkConf) extends Logging {
       jsonObj.put("id", String.valueOf(application_id))
       jsonObj.put("num_of_executors", num_of_executors)
       jsonObj.put("graph", rdd.toDebugString)
-      logWarning("rdd_input_range is " + String.valueOf(rdd_file_range))
       jsonObj.put("rdd_input_range", rdd_file_range)
       if(jsonObj != null){
         post.setEntity(new StringEntity(jsonObj.toJSONString, "UTF-8"))
@@ -2270,16 +2299,21 @@ class SparkContext(config: SparkConf) extends Logging {
       val response = httpClient.execute(post)
       val entity: HttpEntity = response.getEntity
       val str = EntityUtils.toString(entity, "UTF-8")
-      logWarning("Response is :" + response.toString)
-      logWarning("Response is :" + str)
+      logWarning("Tripod :Response is :" + str)
+      rdd_generate_priority = jsonToMap(JSON.parseObject(str).get("rddPriority").asInstanceOf[JSONObject])
+      rdd_2_tripod_id = jsonToMap(JSON.parseObject(str).get("rddToTripodId").asInstanceOf[JSONObject])
+
+
       logWarning("Send finish job inf success !")
     }
     catch {
       case e: Exception =>
-        logWarning("Http server failed!")
-    }finally {
-      httpClient.close()
+        logWarning("Http server failed for reason" + e.toString)
     }
+//    finally {
+//      httpClient.close()
+//      httpClient = HttpClients.createDefault()
+//    }
 
     dagScheduler.runJob(rdd, cleanedFunc, partitions, callSite, resultHandler, localProperties.get)
     progressBar.foreach(_.finishAll())
